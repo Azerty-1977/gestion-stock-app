@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion de Stock</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        input, select, button {
+            border-radius: 0.5rem;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .online-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        .online {
+            background-color: #10B981;
+            color: white;
+        }
+        .offline {
+            background-color: #EF4444;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div id="online-status" class="online-status offline">Hors ligne</div>
+    
+    <div class="container bg-white p-8 rounded-lg shadow-xl space-y-8">
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-gray-800">Gestion de Stock Collaborative</h1>
+            <p id="user-id-display" class="mt-2 text-sm text-gray-500"></p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <!-- Ajouter un Produit -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Ajouter un produit</h2>
+                <div class="space-y-4">
+                    <input type="text" id="add-nom" placeholder="Nom du produit" class="w-full p-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="number" id="add-prix-achat" placeholder="Prix d'achat" class="w-full p-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="number" id="add-prix-vente" placeholder="Prix de vente" class="w-full p-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="number" id="add-stock-initial" placeholder="Stock initial" class="w-full p-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button id="btn-ajouter" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-700 transition duration-300 ease-in-out">Ajouter</button>
+                </div>
+            </div>
+
+            <!-- Entrée et Sortie de Stock -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 col-span-1 md:col-span-2">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Mouvement de stock</h2>
+                <select id="select-produit" class="w-full p-3 mb-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">-- Sélectionnez un produit --</option>
+                </select>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Entrée -->
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 class="text-lg font-medium text-blue-700 mb-2">Entrée fournisseur</h3>
+                        <input type="number" id="entree-quantite" placeholder="Quantité" class="w-full p-2 mb-2 border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="entree-fournisseur" placeholder="Fournisseur" class="w-full p-2 mb-2 border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="btn-entree" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out">Enregistrer l'entrée</button>
+                    </div>
+                    <!-- Sortie -->
+                    <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                        <h3 class="text-lg font-medium text-red-700 mb-2">Sortie vente</h3>
+                        <input type="number" id="sortie-quantite" placeholder="Quantité" class="w-full p-2 mb-2 border border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <input type="text" id="sortie-client" placeholder="Client" class="w-full p-2 mb-2 border border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <button id="btn-sortie" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 ease-in-out">Enregistrer la vente</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Affichage du Stock -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 lg:col-span-3">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">État du Stock</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg border border-gray-200" id="table-stock">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                                <th class="py-3 px-6 text-left">ID Produit</th>
+                                <th class="py-3 px-6 text-left">Nom</th>
+                                <th class="py-3 px-6 text-left">Prix Achat</th>
+                                <th class="py-3 px-6 text-left">Prix Vente</th>
+                                <th class="py-3 px-6 text-left">Stock</th>
+                                <th class="py-3 px-6 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 text-sm font-light">
+                            <!-- Les produits seront insérés ici par le script -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historique des Mouvements -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 lg:col-span-3">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Historique des Mouvements</h2>
+                <div id="historique-mouvements" class="space-y-2">
+                    <!-- Les mouvements seront insérés ici par le script -->
+                </div>
+            </div>
+            
+            <!-- Rapport Périodique -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 lg:col-span-3">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Rapport Périodique</h2>
+                <div class="flex flex-col md:flex-row items-center gap-4 mb-4">
+                    <label for="start-date" class="font-medium text-gray-600">Date de début:</label>
+                    <input type="date" id="start-date" class="p-2 border border-gray-300 rounded-md">
+                    <label for="end-date" class="font-medium text-gray-600">Date de fin:</label>
+                    <input type="date" id="end-date" class="p-2 border border-gray-300 rounded-md">
+                    <button id="btn-rapport" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 ease-in-out flex-shrink-0">Générer le rapport</button>
+                </div>
+                <div id="rapport-resultats" class="space-y-4">
+                    <!-- Les résultats du rapport seront affichés ici -->
+                </div>
+            </div>
+
+            <!-- Zone de messages -->
+            <div id="message-box" class="lg:col-span-3 p-4 text-center rounded-lg font-medium hidden"></div>
+
+        </main>
+    </div>
+
+    <!-- Modale de confirmation -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <p class="mb-4">Êtes-vous sûr de vouloir supprimer ce produit ?</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-yes" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">Oui</button>
+                <button id="confirm-no" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Non</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Firebase - À personnaliser avec vos propres informations
+        const firebaseConfig = {
+            apiKey: "votre_api_key",
+            authDomain: "votre_projet.firebaseapp.com",
+            projectId: "votre_projet",
+            storageBucket: "votre_projet.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "votre_app_id"
+        };
+        
+        const appId = "gestion-stock-app";
+        let userId = localStorage.getItem('userId') || 'user-' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('userId', userId);
+        
+        // Variables globales
+        let db;
+        let isOnline = false;
+        let pendingOperations = [];
+        
+        // Initialisation de l'application
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Afficher l'ID utilisateur
+            document.getElementById('user-id-display').textContent = `ID utilisateur: ${userId}. Partagez ce lien avec vos collaborateurs.`;
+            
+            // Vérifier l'état de la connexion
+            checkOnlineStatus();
+            window.addEventListener('online', checkOnlineStatus);
+            window.addEventListener('offline', checkOnlineStatus);
+            
+            // Initialiser la base de données
+            await initDatabase();
+            
+            // Charger les données
+            await loadProducts();
+            await loadMovements();
+            
+            // Initialiser Firebase si en ligne
+            if (isOnline) {
+                await initFirebase();
+            }
+            
+            // Configurer les écouteurs d'événements
+            setupEventListeners();
+        });
+        
+        // Vérifier l'état de la connexion
+        function checkOnlineStatus() {
+            isOnline = navigator.onLine;
+            const statusElement = document.getElementById('online-status');
+            
+            if (isOnline) {
+                statusElement.textContent = 'En ligne';
+                statusElement.className = 'online-status online';
+                // Synchroniser les données lorsqu'on revient en ligne
+                syncData();
+            } else {
+                statusElement.textContent = 'Hors ligne';
+                statusElement.className = 'online-status offline';
+            }
+        }
+        
+        // Initialiser IndexedDB pour le stockage local
+        function initDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("GestionStockDB", 1);
+                
+                request.onerror = event => {
+                    console.error("Erreur d'ouverture de la base de données:", event.target.error);
+                    reject(event.target.error);
+                };
+                
+                request.onsuccess = event => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    
+                    // Créer le store pour les produits
+                    if (!db.objectStoreNames.contains('products')) {
+                        const productsStore = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+                        productsStore.createIndex('productId', 'productId', { unique: false });
+                        productsStore.createIndex('nom', 'nom', { unique: false });
+                    }
+                    
+                    // Créer le store pour les mouvements
+                    if (!db.objectStoreNames.contains('movements')) {
+                        const movementsStore = db.createObjectStore('movements', { keyPath: 'id', autoIncrement: true });
+                        movementsStore.createIndex('produitId', 'produitId', { unique: false });
+                        movementsStore.createIndex('date', 'date', { unique: false });
+                    }
+                    
+                    // Créer le store pour les opérations en attente
+                    if (!db.objectStoreNames.contains('pendingOperations')) {
+                        db.createObjectStore('pendingOperations', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+        
+        // Initialiser Firebase
+        async function initFirebase() {
+            try {
+                // Charger dynamiquement les SDK Firebase
+                await loadScript('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
+                await loadScript('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+                await loadScript('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                
+                // Initialiser Firebase
+                firebase.initializeApp(firebaseConfig);
+                
+                // Configurer la persistance des données hors ligne
+                firebase.firestore().enablePersistence()
+                    .catch(err => {
+                        console.error("Erreur de persistance Firestore:", err);
+                    });
+                
+                // Se connecter anonymement
+                await firebase.auth().signInAnonymously();
+                
+                console.log("Connecté à Firebase");
+                
+                // Configurer les écouteurs en temps réel
+                setupFirebaseListeners();
+                
+            } catch (error) {
+                console.error("Erreur d'initialisation Firebase:", error);
+            }
+        }
+        
+        // Charger un script dynamiquement
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Configurer les écouteurs Firebase
+        function setupFirebaseListeners() {
+            if (!firebase.apps.length) return;
+            
+            const db = firebase.firestore();
+            
+            // Écouter les produits
+            db.collection('products').onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added' || change.type === 'modified') {
+                        // Mettre à jour la base locale
+                        updateLocalProduct(change.doc.id, change.doc.data());
+                    } else if (change.type === 'removed') {
+                        // Supprimer de la base locale
+                        deleteLocalProduct(change.doc.id);
+                    }
+                });
+            });
+            
+            // Écouter les mouvements
+            db.collection('movements').onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        // Ajouter à la base locale
+                        addLocalMovement(change.doc.id, change.doc.data());
+                    }
+                });
+            });
+        }
+        
+        // Synchroniser les données locales avec Firebase
+        async function syncData() {
+            if (!isOnline || !firebase.apps.length) return;
+            
+            try {
+                // Synchroniser les opérations en attente
+                const pendingOps = await getAllPendingOperations();
+                
+                for (const op of pendingOps) {
+                    try {
+                        await executeOperation(op);
+                        await deletePendingOperation(op.id);
+                    } catch (error) {
+                        console.error("Erreur lors de la synchronisation:", error);
+                    }
+                }
+                
+                // Charger les données depuis Firebase pour s'assurer d'avoir les dernières versions
+                await loadProductsFromFirebase();
+                await loadMovementsFromFirebase();
+                
+            } catch (error) {
+                console.error("Erreur de synchronisation:", error);
+            }
+        }
+        
+        // Configurer les écouteurs d'événements
+        function setupEventListeners() {
+            document.getElementById('btn-ajouter').addEventListener('click', ajouterProduit);
+            document.getElementById('btn-entree').addEventListener('click', entreeFournisseur);
+            document.getElementById('btn-sortie').addEventListener('click', sortieVente);
+            document.getElementById('btn-rapport').addEventListener('click', genererRapportPeriodique);
+            
+            document.getElementById('confirm-yes').addEventListener('click', confirmDelete);
+            document.getElementById('confirm-no').addEventListener('click', cancelDelete);
+        }
+        
+        // Afficher un message
+        function displayMessage(message, isError = false) {
+            const messageBox = document.getElementById('message-box');
+            messageBox.textContent = message;
+            messageBox.className = `lg:col-span-3 p-4 text-center rounded-lg font-medium ${isError ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800'}`;
+            messageBox.style.display = 'block';
+            
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Modale de confirmation
+        let productToDelete = null;
+        
+        function showConfirmModal(productId) {
+            productToDelete = productId;
+            document.getElementById('confirm-modal').style.display = 'flex';
+        }
+        
+        function confirmDelete() {
+            if (productToDelete) {
+                supprimerProduit(productToDelete);
+                productToDelete = null;
+            }
+            document.getElementById('confirm-modal').style.display = 'none';
+        }
+        
+        function cancelDelete() {
+            productToDelete = null;
+            document.getElementById('confirm-modal').style.display = 'none';
+        }
+        
+        // Fonctions de gestion des produits
+        async function ajouterProduit() {
+            const nom = document.getElementById('add-nom').value.trim();
+            const prixAchat = parseFloat(document.getElementById('add-prix-achat').value);
+            const prixVente = parseFloat(document.getElementById('add-prix-vente').value);
+            const stockInitial = parseInt(document.getElementById('add-stock-initial').value);
+            
+            if (!nom || isNaN(prixAchat) || isNaN(prixVente) || isNaN(stockInitial)) {
+                displayMessage("Veuillez remplir tous les champs correctement.", true);
+                return;
+            }
+            
+            try {
+                // Générer un ID de produit
+                const products = await getAllProducts();
+                const nextProductId = products.length > 0 ? Math.max(...products.map(p => p.productId || 0)) + 1 : 1;
+                
+                const productData = {
+                    productId: nextProductId,
+                    nom,
+                    prixAchat,
+                    prixVente,
+                    stock: stockInitial
+                };
+                
+                if (isOnline && firebase.apps.length) {
+                    // En ligne: ajouter à Firebase
+                    await firebase.firestore().collection('products').add(productData);
+                } else {
+                    // Hors ligne: ajouter localement et mettre en file d'attente
+                    const localId = await addLocalProduct(productData);
+                    await addPendingOperation({
+                        type: 'addProduct',
+                        data: productData,
+                        timestamp: new Date().getTime()
+                    });
+                }
+                
+                displayMessage("Produit ajouté avec succès!");
+                
+                // Réinitialiser le formulaire
+                document.getElementById('add-nom').value = '';
+                document.getElementById('add-prix-achat').value = '';
+                document.getElementById('add-prix-vente').value = '';
+                document.getElementById('add-stock-initial').value = '';
+                
+                // Recharger la liste des produits
+                await loadProducts();
+                
+            } catch (error) {
+                console.error("Erreur lors de l'ajout du produit:", error);
+                displayMessage("Erreur lors de l'ajout du produit.", true);
+            }
+        }
+        
+        async function entreeFournisseur() {
+            const produitSelect = document.getElementById('select-produit');
+            const produitId = produitSelect.value;
+            const quantite = parseInt(document.getElementById('entree-quantite').value);
+            const fournisseur = document.getElementById('entree-fournisseur').value.trim();
+            
+            if (!produitId || isNaN(quantite) || !fournisseur || quantite <= 0) {
+                displayMessage("Veuillez sélectionner un produit et entrer une quantité positive et un fournisseur.", true);
+                return;
+            }
+            
+            try {
+                // Récupérer le produit
+                const product = await getProduct(produitId);
+                
+                if (!product) {
+                    displayMessage("Produit non trouvé.", true);
+                    return;
+                }
+                
+                const movementData = {
+                    produitId: product.id || product.productId,
+                    quantite,
+                    fournisseur,
+                    type: 'entree',
+                    date: new Date().toISOString().split('T')[0]
+                };
+                
+                if (isOnline && firebase.apps.length) {
+                    // En ligne: mettre à jour Firebase
+                    await firebase.firestore().collection('movements').add(movementData);
+                    
+                    // Mettre à jour le stock
+                    const newStock = product.stock + quantite;
+                    await firebase.firestore().collection('products').doc(produitId).update({
+                        stock: newStock
+                    });
+                } else {
+                    // Hors ligne: ajouter localement
+                    await addLocalMovement(null, movementData);
+                    
+                    // Mettre à jour le stock local
+                    const newStock = product.stock + quantite;
+                    await updateLocalProduct(produitId, { ...product, stock: newStock });
+                    
+                    // Mettre en file d'attente
+                    await addPendingOperation({
+                        type: 'addMovement',
+                        data: movementData,
+                        timestamp: new Date().getTime()
+                    });
+                }
+                
+                displayMessage("Entrée de stock enregistrée avec succès!");
+                
+                // Réinitialiser le formulaire
+                document.getElementById('entree-quantite').value = '';
+                document.getElementById('entree-fournisseur').value = '';
+                
+                // Recharger les données
+                await loadProducts();
+                await loadMovements();
+                
+            } catch (error) {
+                console.error("Erreur lors de l'entrée de stock:", error);
+                displayMessage("Erreur lors de l'entrée de stock.", true);
+            }
+        }
+        
+        async function sortieVente() {
+            const produitSelect = document.getElementById('select-produit');
+            const produitId = produitSelect.value;
+            const quantite = parseInt(document.getElementById('sortie-quantite').value);
+            const client = document.getElementById('sortie-client').value.trim();
+            
+            if (!produitId || isNaN(quantite) || !client || quantite <= 0) {
+                displayMessage("Veuillez sélectionner un produit, entrer une quantité positive et un client.", true);
+                return;
+            }
+            
+            try {
+                // Récupérer le produit
+                const product = await getProduct(produitId);
+                
+                if (!product) {
+                    displayMessage("Produit non trouvé.", true);
+                    return;
+                }
+                
+                // Vérifier le stock
+                if (product.stock < quantite) {
+                    displayMessage(`Stock insuffisant. Stock actuel: ${product.stock}`, true);
+                    return;
+                }
+                
+                const movementData = {
+                    produitId: product.id || product.productId,
+                    quantite,
+                    client,
+                    type: 'sortie',
+                    date: new Date().toISOString().split('T')[0]
+                };
+                
+                if (isOnline && firebase.apps.length) {
+                    // En ligne: mettre à jour Firebase
+                    await firebase.firestore().collection('movements').add(movementData);
+                    
+                    // Mettre à jour le stock
+                    const newStock = product.stock - quantite;
+                    await firebase.firestore().collection('products').doc(produitId).update({
+                        stock: newStock
+                    });
+                } else {
+                    // Hors ligne: ajouter localement
+                    await addLocalMovement(null, movementData);
+                    
+                    // Mettre à jour le stock local
+                    const newStock = product.stock - quantite;
+                    await updateLocalProduct(produitId, { ...product, stock: newStock });
+                    
+                    // Mettre en file d'attente
+                    await addPendingOperation({
+                        type: 'addMovement',
+                        data: movementData,
+                        timestamp: new Date().getTime()
+                    });
+                }
+                
+                displayMessage("Vente enregistrée avec succès!");
+                
+                // Réinitialiser le formulaire
+                document.getElementById('sortie-quantite').value = '';
+                document.getElementById('sortie-client').value = '';
+                
+                // Recharger les données
+                await loadProducts();
+                await loadMovements();
+                
+            } catch (error) {
+                console.error("Erreur lors de l'enregistrement de la vente:", error);
+                displayMessage("Erreur lors de l'enregistrement de la vente.", true);
+            }
+        }
+        
+        async function supprimerProduit(id) {
+            try {
+                if (isOnline && firebase.apps.length) {
+                    // En ligne: supprimer de Firebase
+                    await firebase.firestore().collection('products').doc(id).delete();
+                } else {
+                    // Hors ligne: supprimer localement et mettre en file d'attente
+                    const product = await getProduct(id);
+                    await deleteLocalProduct(id);
+                    
+                    await addPendingOperation({
+                        type: 'deleteProduct',
+                        data: { id },
+                        timestamp: new Date().getTime()
+                    });
+                }
+                
+                displayMessage("Produit supprimé avec succès!");
+                await loadProducts();
+                
+            } catch (error) {
+                console.error("Erreur lors de la suppression du produit:", error);
+                displayMessage("Erreur lors de la suppression du produit.", true);
+            }
+        }
+        
+        async function genererRapportPeriodique() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const rapportDiv = document.getElementById('rapport-resultats');
+            
+            if (!startDate || !endDate) {
+                displayMessage("Veuillez sélectionner une date de début et une date de fin.", true);
+                return;
+            }
+            
+            try {
+                // Récupérer les mouvements dans la période
+                const movements = await getMovementsByDateRange(startDate, endDate);
+                const products = await getAllProducts();
+                
+                if (movements.length === 0) {
+                    rapportDiv.innerHTML = '<p class="text-gray-500 text-center">Aucun mouvement de stock pour la période sélectionnée.</p>';
+                    return;
+                }
+                
+                // Créer un map des produits pour un accès rapide
+                const productsMap = new Map();
+                products.forEach(p => {
+                    productsMap.set(p.id || p.productId, p);
+                });
+                
+                let totalRevenue = 0;
+                let totalCost = 0;
+                const productSummary = {};
+                
+                movements.forEach(movement => {
+                    const product = productsMap.get(movement.produitId);
+                    
+                    if (!product) return;
+                    
+                    if (!productSummary[movement.produitId]) {
+                        productSummary[movement.produitId] = {
+                            nom: product.nom,
+                            entrees: 0,
+                            sorties: 0,
+                            revenue: 0,
+                            cost: 0
+                        };
+                    }
+                    
+                    if (movement.type === 'entree') {
+                        productSummary[movement.produitId].entrees += movement.quantite;
+                    } else if (movement.type === 'sortie') {
+                        productSummary[movement.produitId].sorties += movement.quantite;
+                        const revenue = movement.quantite * product.prixVente;
+                        const cost = movement.quantite * product.prixAchat;
+                        productSummary[movement.produitId].revenue += revenue;
+                        productSummary[movement.produitId].cost += cost;
+                        totalRevenue += revenue;
+                        totalCost += cost;
+                    }
+                });
+                
+                const totalProfit = totalRevenue - totalCost;
+                
+                rapportDiv.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-2">Résumé du rapport (${startDate} au ${endDate})</h3>
+                    <div class="space-y-2 text-gray-700">
+                        <p><strong>Chiffre d'affaires total:</strong> <span class="text-green-600 font-bold">${totalRevenue.toFixed(2)} €</span></p>
+                        <p><strong>Coût des marchandises vendues:</strong> <span class="text-red-600 font-bold">${totalCost.toFixed(2)} €</span></p>
+                        <p><strong>Bénéfice net:</strong> <span class="font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}">${totalProfit.toFixed(2)} €</span></p>
+                    </div>
+                    <h4 class="text-lg font-semibold mt-6 mb-2">Détail par produit</h4>
+                    <table class="min-w-full bg-white rounded-lg border border-gray-200">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                                <th class="py-3 px-6 text-left">Produit</th>
+                                <th class="py-3 px-6 text-left">Entrées</th>
+                                <th class="py-3 px-6 text-left">Sorties</th>
+                                <th class="py-3 px-6 text-left">Chiffre d'affaires</th>
+                                <th class="py-3 px-6 text-left">Bénéfice</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 text-sm font-light">
+                            ${Object.values(productSummary).map(p => `
+                                <tr class="border-b border-gray-200">
+                                    <td class="py-3 px-6">${p.nom}</td>
+                                    <td class="py-3 px-6">${p.entrees}</td>
+                                    <td class="py-3 px-6">${p.sorties}</td>
+                                    <td class="py-3 px-6">${p.revenue.toFixed(2)} €</td>
+                                    <td class="py-3 px-6">${(p.revenue - p.cost).toFixed(2)} €</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                displayMessage("Rapport généré avec succès!");
+                
+            } catch (error) {
+                console.error("Erreur lors de la génération du rapport:", error);
+                displayMessage("Erreur lors de la génération du rapport.", true);
+            }
+        }
+        
+        // Fonctions pour charger les données
+        async function loadProducts() {
+            try {
+                const products = await getAllProducts();
+                const tableBody = document.querySelector("#table-stock tbody");
+                const selectProduit = document.getElementById('select-produit');
+                
+                tableBody.innerHTML = '';
+                selectProduit.innerHTML = '<option value="">-- Sélectionnez un produit --</option>';
+                
+                if (products.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-500">Aucun produit en stock</td></tr>';
+                    return;
+                }
+                
+                products.forEach(product => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-200 hover:bg-gray-100';
+                    row.innerHTML = `
+                        <td class="py-3 px-6 text-left whitespace-nowrap">${product.productId}</td>
+                        <td class="py-3 px-6 text-left">${product.nom}</td>
+                        <td class="py-3 px-6 text-left">${product.prixAchat.toFixed(2)} €</td>
+                        <td class="py-3 px-6 text-left">${product.prixVente.toFixed(2)} €</td>
+                        <td class="py-3 px-6 text-left">${product.stock}</td>
+                        <td class="py-3 px-6 text-left">
+                            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-full text-xs btn-delete" data-id="${product.id || product.productId}">Supprimer</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                    
+                    // Ajouter à la liste déroulante
+                    const option = document.createElement('option');
+                    option.value = product.id || product.productId;
+                    option.textContent = product.nom;
+                    selectProduit.appendChild(option);
+                });
+                
+                // Ajouter les écouteurs d'événements pour les boutons de suppression
+                document.querySelectorAll('.btn-delete').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        showConfirmModal(e.target.dataset.id);
+                    });
+                });
+                
+            } catch (error) {
+                console.error("Erreur lors du chargement des produits:", error);
+            }
+        }
+        
+        async function loadMovements() {
+            try {
+                const movements = await getAllMovements();
+                const historiqueDiv = document.getElementById('historique-mouvements');
+                historiqueDiv.innerHTML = '';
+                
+                if (movements.length === 0) {
+                    historiqueDiv.innerHTML = '<p class="text-gray-500 text-center">Aucun mouvement de stock enregistré.</p>';
+                    return;
+                }
+                
+                // Trier les mouvements par date (du plus récent au plus ancien)
+                movements.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                // Récupérer les produits pour obtenir leurs noms
+                const products = await getAllProducts();
+                const productsMap = new Map();
+                products.forEach(p => {
+                    productsMap.set(p.id || p.productId, p.nom);
+                });
+                
+                movements.forEach(movement => {
+                    const produitNom = productsMap.get(movement.produitId) || 'Produit inconnu';
+                    const icon = movement.type === 'entree' ? '+' : '-';
+                    const color = movement.type === 'entree' ? 'text-green-600' : 'text-red-600';
+                    const person = movement.fournisseur ? `(Fournisseur: ${movement.fournisseur})` : `(Client: ${movement.client})`;
+                    
+                    const p = document.createElement('p');
+                    p.innerHTML = `<span class="font-bold">${movement.date}</span> - ${produitNom} : <span class="${color} font-bold">${icon}${movement.quantite}</span> ${person}`;
+                    historiqueDiv.appendChild(p);
+                });
+                
+            } catch (error) {
+                console.error("Erreur lors du chargement des mouvements:", error);
+            }
+        }
+        
+        // Fonctions IndexedDB
+        function getAllProducts() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['products'], 'readonly');
+                const store = transaction.objectStore('products');
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function getProduct(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['products'], 'readonly');
+                const store = transaction.objectStore('products');
+                const request = store.get(Number(id));
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function addLocalProduct(product) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['products'], 'readwrite');
+                const store = transaction.objectStore('products');
+                const request = store.add(product);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function updateLocalProduct(id, product) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['products'], 'readwrite');
+                const store = transaction.objectStore('products');
+                const request = store.put({ ...product, id: Number(id) });
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function deleteLocalProduct(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['products'], 'readwrite');
+                const store = transaction.objectStore('products');
+                const request = store.delete(Number(id));
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function getAllMovements() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['movements'], 'readonly');
+                const store = transaction.objectStore('movements');
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function getMovementsByDateRange(startDate, endDate) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['movements'], 'readonly');
+                const store = transaction.objectStore('movements');
+                const index = store.index('date');
+                const range = IDBKeyRange.bound(startDate, endDate);
+                const request = index.getAll(range);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function addLocalMovement(id, movement) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['movements'], 'readwrite');
+                const store = transaction.objectStore('movements');
+                const request = store.add(movement);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function getAllPendingOperations() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['pendingOperations'], 'readonly');
+                const store = transaction.objectStore('pendingOperations');
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function addPendingOperation(operation) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['pendingOperations'], 'readwrite');
+                const store = transaction.objectStore('pendingOperations');
+                const request = store.add(operation);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function deletePendingOperation(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['pendingOperations'], 'readwrite');
+                const store = transaction.objectStore('pendingOperations');
+                const request = store.delete(id);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        // Fonctions Firebase (pour la synchronisation)
+        async function loadProductsFromFirebase() {
+            if (!firebase.apps.length) return;
+            
+            try {
+                const snapshot = await firebase.firestore().collection('products').get();
+                const products = [];
+                
+                snapshot.forEach(doc => {
+                    products.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Mettre à jour la base locale
+                for (const product of products) {
+                    await updateLocalProduct(product.id, product);
+                }
+                
+                // Recharger l'affichage
+                await loadProducts();
+                
+            } catch (error) {
+                console.error("Erreur lors du chargement des produits depuis Firebase:", error);
+            }
+        }
+        
+        async function loadMovementsFromFirebase() {
+            if (!firebase.apps.length) return;
+            
+            try {
+                const snapshot = await firebase.firestore().collection('movements').get();
+                
+                snapshot.forEach(async doc => {
+                    await addLocalMovement(doc.id, doc.data());
+                });
+                
+                // Recharger l'affichage
+                await loadMovements();
+                
+            } catch (error) {
+                console.error("Erreur lors du chargement des mouvements depuis Firebase:", error);
+            }
+        }
+        
+        async function executeOperation(operation) {
+            if (!firebase.apps.length) return;
+            
+            try {
+                switch (operation.type) {
+                    case 'addProduct':
+                        await firebase.firestore().collection('products').add(operation.data);
+                        break;
+                    case 'addMovement':
+                        await firebase.firestore().collection('movements').add(operation.data);
+                        
+                        // Mettre à jour le stock
+                        if (operation.data.type === 'entree') {
+                            const product = await getProduct(operation.data.produitId);
+                            if (product) {
+                                const newStock = product.stock + operation.data.quantite;
+                                await firebase.firestore().collection('products').doc(operation.data.produitId).update({
+                                    stock: newStock
+                                });
+                            }
+                        } else if (operation.data.type === 'sortie') {
+                            const product = await getProduct(operation.data.produitId);
+                            if (product) {
+                                const newStock = product.stock - operation.data.quantite;
+                                await firebase.firestore().collection('products').doc(operation.data.produitId).update({
+                                    stock: newStock
+                                });
+                            }
+                        }
+                        break;
+                    case 'deleteProduct':
+                        await firebase.firestore().collection('products').doc(operation.data.id).delete();
+                        break;
+                }
+            } catch (error) {
+                console.error("Erreur lors de l'exécution de l'opération:", error);
+                throw error;
+            }
+        }
+    </script>
+</body>
+</html>
